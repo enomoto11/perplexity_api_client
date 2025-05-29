@@ -150,8 +150,8 @@ async fn main() -> Result<()> {
             },
         ],
         max_tokens: Some(500),
-        temperature: Some(0.7),
-        top_p: Some(1.0),
+        temperature: Some(0.0),
+        top_p: Some(0.5),
     };
 
     println!("Sending request to Perplexity API...");
