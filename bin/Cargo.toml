@@ -7,6 +7,7 @@ edition = "2021"
 anyhow = "1"
 api = { path = "../api" }
 tokio = { version = "1", features = ["full"] }
+futures = "0.3"
 
 [[bin]]
 name = "perplexity_api_client"
