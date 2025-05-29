@@ -3,8 +3,7 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use std::env;
 
-const PERPLEXITY_API_BASE_URL: &str = "https://api.perplexity.ai";
-const PERPLEXITY_CHAT_COMPLETIONS_URL: &str = "/chat/completions";
+const PERPLEXITY_API_URL: &str = "https://api.perplexity.ai/chat/completions";
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -110,14 +109,10 @@ impl PerplexityClient {
         &self,
         request: &ChatCompletionRequest,
     ) -> Result<ChatCompletionResponse> {
-        let url = format!(
-            "{}{}",
-            PERPLEXITY_API_BASE_URL, PERPLEXITY_CHAT_COMPLETIONS_URL
-        );
         let headers = self.create_headers().unwrap();
         let response = self
             .client
-            .post(&url)
+            .post(PERPLEXITY_API_URL)
             .headers(headers)
             .json(request)
             .send()
