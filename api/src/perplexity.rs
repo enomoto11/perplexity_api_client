@@ -80,6 +80,7 @@ pub struct ChatCompletionResponse {
     pub usage: Usage,
 }
 
+#[derive(Clone)]
 pub struct PerplexityClient {
     api_key: String,
     client: reqwest::Client,
