@@ -8,6 +8,15 @@ const PERPLEXITY_CHAT_COMPLETIONS_URL: &str = "/chat/completions";
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+pub enum Model {
+    Sonar,
+    SonarPro,
+    SonarReasoning,
+    SonarReasoningPro,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Role {
     System,
     User,
@@ -36,7 +45,7 @@ pub struct WebSearchOptions {
 
 #[derive(Debug, Serialize)]
 pub struct ChatCompletionRequest {
-    pub model: String,
+    pub model: Model,
     pub messages: Vec<ChatMessage>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u32>,

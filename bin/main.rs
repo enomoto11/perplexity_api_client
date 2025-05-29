@@ -1,6 +1,7 @@
 use anyhow::Result;
 use api::perplexity::{
-    ChatCompletionRequest, ChatMessage, ContextLength, PerplexityClient, Role, WebSearchOptions,
+    ChatCompletionRequest, ChatMessage, ContextLength, Model, PerplexityClient, Role,
+    WebSearchOptions,
 };
 use std::io::{self, Write};
 
@@ -15,7 +16,7 @@ async fn main() -> Result<()> {
     let user_input = user_input.trim().to_string();
 
     let request = ChatCompletionRequest {
-        model: "sonar".to_string(),
+        model: Model::Sonar,
         messages: vec![
             ChatMessage {
                 role: Role::System,
