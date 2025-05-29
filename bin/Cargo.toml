@@ -1,0 +1,13 @@
+[package]
+name = "perplexity_api_client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+api = { path = "../api" }
+tokio = { version = "1", features = ["full"] }
+
+[[bin]]
+name = "perplexity_api_client"
+path = "main.rs" 

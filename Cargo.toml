@@ -1,12 +1,5 @@
-[package]
-name = "perplexity_api_client"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-reqwest = { version = "0.12", features = ["json"] } # HTTPクライアント
-tokio = { version = "1", features = ["full"] }      # 非同期ランタイム
-serde = { version = "1", features = ["derive"] }    # JSONシリアライズ/デシリアライズ
-serde_json = "1"                                    # JSON操作
-dotenv = "0.15"                                     # 環境変数管理 (APIキーのため)
-anyhow = "1"                                        # エラーハンドリング
+[workspace]
+members = [
+    "bin",
+    "api"
+]
