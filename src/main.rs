@@ -21,6 +21,20 @@ pub struct ChatMessage {
     pub content: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ContextLength {
+    Low,
+    Medium,
+    High,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WebSearchOptions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_length: Option<ContextLength>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct ChatCompletionRequest {
     pub model: String,
@@ -31,6 +45,8 @@ pub struct ChatCompletionRequest {
     pub temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_p: Option<f32>,
+    #[serde(rename = "webSearchOptions", skip_serializing_if = "Option::is_none")]
+    pub web_search_options: Option<WebSearchOptions>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -141,6 +157,9 @@ async fn main() -> Result<()> {
         max_tokens: Some(500),
         temperature: Some(0.0),
         top_p: Some(0.5),
+        web_search_options: Some(WebSearchOptions {
+            context_length: Some(ContextLength::Low),
+        }),
     };
 
     println!("Sending request to Perplexity API...");
