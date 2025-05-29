@@ -2,14 +2,11 @@ use anyhow::{anyhow, Result};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use std::env;
+use std::io::{self, Write};
 
-/// Perplexity APIのエンドポイント
 const PERPLEXITY_API_BASE_URL: &str = "https://api.perplexity.ai";
-
-/// Perplexity APIのチャットエンドポイント
 const PERPLEXITY_CHAT_COMPLETIONS_URL: &str = "/chat/completions";
 
-/// ロールを表すEnum
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")] // JSONでの表現を小文字にする
 pub enum Role {
@@ -18,14 +15,12 @@ pub enum Role {
     Assistant,
 }
 
-/// チャットメッセージの構造体
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChatMessage {
     pub role: Role,
     pub content: String,
 }
 
-/// チャットリクエストの構造体
 #[derive(Debug, Serialize)]
 pub struct ChatCompletionRequest {
     pub model: String,
@@ -36,17 +31,14 @@ pub struct ChatCompletionRequest {
     pub temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_p: Option<f32>,
-    // 他にも必要なパラメータがあればここに追加
 }
 
-/// チャットレスポンスのメッセージ構造体
 #[derive(Debug, Deserialize)]
 pub struct ChoiceMessage {
     pub role: Role,
     pub content: String,
 }
 
-/// チャットレスポンスの選択肢構造体
 #[derive(Debug, Deserialize)]
 pub struct Choice {
     pub index: u32,
@@ -54,7 +46,6 @@ pub struct Choice {
     pub finish_reason: String,
 }
 
-/// 使用量情報の構造体
 #[derive(Debug, Deserialize)]
 pub struct Usage {
     pub prompt_tokens: u32,
@@ -62,7 +53,6 @@ pub struct Usage {
     pub total_tokens: u32,
 }
 
-/// チャットレスポンスの構造体
 #[derive(Debug, Deserialize)]
 pub struct ChatCompletionResponse {
     pub id: String,
@@ -72,17 +62,14 @@ pub struct ChatCompletionResponse {
     pub usage: Usage,
 }
 
-/// Perplexity APIクライアント
 pub struct PerplexityClient {
     api_key: String,
     client: reqwest::Client,
 }
 
 impl PerplexityClient {
-    /// 新しいPerplexityClientを作成します。
-    /// APIキーは環境変数 `PPLX_API_KEY` から読み込みます。
     pub fn new() -> Result<Self> {
-        dotenv::dotenv().ok(); // .envファイルをロード
+        dotenv::dotenv().ok();
         let api_key = env::var("PPLX_API_KEY")
             .map_err(|_| anyhow!("PPLX_API_KEY environment variable not set"))?;
 
@@ -90,7 +77,6 @@ impl PerplexityClient {
         Ok(Self { api_key, client })
     }
 
-    /// ヘッダーマップを作成します。
     fn create_headers(&self) -> Result<HeaderMap, reqwest::header::InvalidHeaderValue> {
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -101,7 +87,6 @@ impl PerplexityClient {
         Ok(headers)
     }
 
-    /// チャット補完をリクエストします。
     pub async fn chat_completions(
         &self,
         request: &ChatCompletionRequest,
@@ -110,7 +95,7 @@ impl PerplexityClient {
             "{}{}",
             PERPLEXITY_API_BASE_URL, PERPLEXITY_CHAT_COMPLETIONS_URL
         );
-        let headers = self.create_headers().unwrap(); // エラーハンドリングは適宜強化
+        let headers = self.create_headers().unwrap();
         let response = self
             .client
             .post(&url)
@@ -119,7 +104,6 @@ impl PerplexityClient {
             .send()
             .await?;
 
-        // ステータスコードがエラーの場合はエラーを返す
         if !response.status().is_success() {
             let status = response.status();
             let text = response.text().await?;
@@ -133,8 +117,13 @@ impl PerplexityClient {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // .envファイルに PPLX_API_KEY=YOUR_API_KEY を記述しておく
     let client = PerplexityClient::new()?;
+
+    print!("質問を入力してください: ");
+    io::stdout().flush()?;
+    let mut user_input = String::new();
+    io::stdin().read_line(&mut user_input)?;
+    let user_input = user_input.trim().to_string();
 
     let request = ChatCompletionRequest {
         model: "sonar".to_string(), // または "llama-3-sonar-large-32k-online"
@@ -146,7 +135,7 @@ async fn main() -> Result<()> {
             },
             ChatMessage {
                 role: Role::User,
-                content: "Rustプログラミング言語について教えてください。".to_string(),
+                content: user_input,
             },
         ],
         max_tokens: Some(500),
