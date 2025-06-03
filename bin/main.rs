@@ -95,7 +95,7 @@ async fn main() -> Result<()> {
     let mut req_count = 0;
     let mut window_start = Instant::now();
 
-    let max_concurrency = 3;
+    let max_concurrency = 6;
     let max_requests_per_min = 45;
 
     // 最初に最大3つまで起動
