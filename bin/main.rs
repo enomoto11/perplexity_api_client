@@ -70,15 +70,6 @@ async fn main() -> Result<()> {
         "Rubyの言語思想を教えて",
         "PHPの言語思想を教えて",
         "JavaScriptの言語思想を教えて",
-        "Rustの言語思想を教えて",
-        "Goの言語思想を教えて",
-        "Pythonの言語思想を教えて",
-        "Javaの言語思想を教えて",
-        "C++の言語思想を教えて",
-        "C#の言語思想を教えて",
-        "Rubyの言語思想を教えて",
-        "PHPの言語思想を教えて",
-        "JavaScriptの言語思想を教えて",
     ];
 
     let mut log_file = OpenOptions::new()
@@ -108,9 +99,10 @@ async fn main() -> Result<()> {
     ));
     let concurrency = 12;
 
-    // 最初に最大concurrency個まで起動
-    for _ in 0..concurrency {
-        if let Some(content) = iter.next() {
+    // 並行度分だけ最初にタスクを起動
+    std::iter::from_fn(|| iter.next())
+        .take(concurrency)
+        .for_each(|content| {
             let client = client.clone();
             let req_content = content.clone();
             let limiter = Arc::clone(&limiter);
@@ -137,8 +129,7 @@ async fn main() -> Result<()> {
                 limiter.until_ready().await;
                 (req_content, client.chat_completions(&req).await)
             }));
-        }
-    }
+        });
 
     // 1つ終わるごとに次を追加
     while let Some(res) = in_flight.next().await {
