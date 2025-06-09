@@ -3,7 +3,7 @@ use api::perplexity::{
     ChatCompletionRequest, ChatMessage, ContextLength, Model, PerplexityClient, Role,
     WebSearchOptions,
 };
-use futures::stream::{FuturesUnordered, StreamExt};
+use futures::stream::{self, StreamExt};
 use governor::clock::DefaultClock;
 use governor::{Quota, RateLimiter};
 use plotters::prelude::*;
@@ -82,13 +82,7 @@ async fn main() -> Result<()> {
 
     writeln!(log_file, "処理を開始します {}件", contents.len())?;
 
-    let start_at = Instant::now();
-
     let client = PerplexityClient::new()?;
-
-    let mut results = Vec::new();
-    let mut in_flight = FuturesUnordered::new();
-    let mut iter = contents.iter().map(|s| s.to_string());
 
     // 1分間に45リクエストのレートリミット
     let quota =
@@ -97,44 +91,45 @@ async fn main() -> Result<()> {
         quota,
         &DefaultClock::default(),
     ));
-    let concurrency = 12;
+    let concurrency = 6;
 
-    // 並行度分だけ最初にタスクを起動
-    std::iter::from_fn(|| iter.next())
-        .take(concurrency)
-        .for_each(|content| {
+    let results_stream = stream::iter(contents.iter().cloned().map(String::from))
+        .map(|content| {
             let client = client.clone();
-            let req_content = content.clone();
             let limiter = Arc::clone(&limiter);
-            let req = ChatCompletionRequest {
-                model: Model::Sonar,
-                messages: vec![
-                    ChatMessage {
-                        role: Role::System,
-                        content: "You are an AI assistant that answers questions accurately and concisely.".to_string(),
-                    },
-                    ChatMessage {
-                        role: Role::User,
-                        content: req_content.clone(),
-                    },
-                ],
-                max_tokens: Some(500),
-                temperature: Some(0.0),
-                top_p: Some(0.5),
-                web_search_options: Some(WebSearchOptions {
-                    context_length: Some(ContextLength::Low),
-                }),
-            };
-            in_flight.push(tokio::spawn(async move {
+            async move {
                 limiter.until_ready().await;
-                (req_content, client.chat_completions(&req).await)
-            }));
-        });
+                let req = ChatCompletionRequest {
+                    model: Model::Sonar,
+                    messages: vec![
+                        ChatMessage {
+                            role: Role::System,
+                            content: "You are an AI assistant that answers questions accurately and concisely.".to_string(),
+                        },
+                        ChatMessage {
+                            role: Role::User,
+                            content: content.clone(),
+                        },
+                    ],
+                    max_tokens: Some(500),
+                    temperature: Some(0.0),
+                    top_p: Some(0.5),
+                    web_search_options: Some(WebSearchOptions {
+                        context_length: Some(ContextLength::Low),
+                    }),
+                };
+                let res = client.chat_completions(&req).await;
+                (content, res)
+            }
+        })
+        .buffer_unordered(concurrency);
 
-    // 1つ終わるごとに次を追加
-    while let Some(res) = in_flight.next().await {
+    let mut results = Vec::new();
+    let start_at = Instant::now();
+    futures::pin_mut!(results_stream);
+    while let Some((content, res)) = results_stream.next().await {
         let elapsed = start_at.elapsed().as_secs_f32();
-        if let Ok((content, Ok(response))) = res {
+        if let Ok(response) = res {
             let texts: Vec<_> = response
                 .choices
                 .into_iter()
@@ -146,43 +141,12 @@ async fn main() -> Result<()> {
                 elapsed, content, texts
             )?;
             results.push((content.to_string(), texts));
-        } else if let Ok((content, Err(e))) = res {
+        } else if let Err(e) = res {
             writeln!(
                 log_file,
                 "[{:.2} sec] API Error for {}: {}",
                 elapsed, content, e
             )?;
-        } else if let Err(e) = res {
-            writeln!(log_file, "[{:.2} sec] Join Error: {}", elapsed, e)?;
-        }
-
-        if let Some(content) = iter.next() {
-            let client = client.clone();
-            let req_content = content.clone();
-            let limiter = Arc::clone(&limiter);
-            let req = ChatCompletionRequest {
-                model: Model::Sonar,
-                messages: vec![
-                    ChatMessage {
-                        role: Role::System,
-                        content: "You are an AI assistant that answers questions accurately and concisely.".to_string(),
-                    },
-                    ChatMessage {
-                        role: Role::User,
-                        content: req_content.clone(),
-                    },
-                ],
-                max_tokens: Some(500),
-                temperature: Some(0.0),
-                top_p: Some(0.5),
-                web_search_options: Some(WebSearchOptions {
-                    context_length: Some(ContextLength::Low),
-                }),
-            };
-            in_flight.push(tokio::spawn(async move {
-                limiter.until_ready().await;
-                (req_content, client.chat_completions(&req).await)
-            }));
         }
     }
 
@@ -201,7 +165,7 @@ async fn main() -> Result<()> {
     )?;
 
     // リクエスト流量グラフを描画
-    draw_request_flow_chart("log.txt", "request_flow_12.png")?;
+    draw_request_flow_chart("log.txt", "request_flow_6.png")?;
 
     Ok(())
 }
