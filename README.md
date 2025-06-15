@@ -42,3 +42,4 @@ cargo run
 
 - `src/main.rs` : メインのクライアント実装
 - `Cargo.toml` : 依存クレート定義
+
